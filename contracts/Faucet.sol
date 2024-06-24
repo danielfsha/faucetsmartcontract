@@ -10,13 +10,14 @@ interface IERC20 {
 contract Faucet {
     address public owner;
     IERC20 public token;
-    uint256 public widthdrawalAmount = 100 * 10 ** 18;
+    uint256 public withdrawalAmount = 100 * 10 ** 18;
 
     uint256 public lockTime = 5 minutes;
 
     struct Transaction {
-        uint256 timestamp;
+        address to;
         uint256 amount;
+        uint256 timestamp;
     }
 
     mapping(address => uint256) public nextAccessTime;
@@ -31,29 +32,30 @@ contract Faucet {
     }
 
     modifier onlyOwner() {
-        require(msg.sender >= owner, "Faucet: only owner");
+        require(msg.sender == owner, "Faucet: only owner");
         _;
     }
 
-    function requestTokens() public {
+    function requestTokens(address _account) public {
         require(
-            token.balanceOf(address(0)) >= widthdrawalAmount,
+            token.balanceOf(address(this)) >= withdrawalAmount,
             "Faucet: insufficient funds"
         );
-
         require(
-            block.timestamp >= nextAccessTime[msg.sender],
+            block.timestamp >= nextAccessTime[_account],
             "Faucet: Enough time hasn't elapsed"
         );
-
         require(
             msg.sender != address(0),
             "Faucet: cannot withdraw from 0 address"
         );
 
-        nextAccessTime[msg.sender] = block.timestamp + lockTime;
+        nextAccessTime[_account] = block.timestamp + lockTime;
+        userTransactions[_account].push(
+            Transaction(_account, withdrawalAmount, block.timestamp)
+        );
 
-        token.transfer(msg.sender, widthdrawalAmount);
+        token.transfer(_account, withdrawalAmount);
     }
 
     receive() external payable {
@@ -65,11 +67,11 @@ contract Faucet {
     }
 
     function setWithdrawalAmount(uint256 _amount) public onlyOwner {
-        widthdrawalAmount = _amount * 10 ** 18;
+        withdrawalAmount = _amount;
     }
 
     function setLockTime(uint256 _lockTime) public onlyOwner {
-        lockTime = _lockTime * 1 minutes;
+        lockTime = _lockTime;
     }
 
     function getUserTransactions(
@@ -79,7 +81,8 @@ contract Faucet {
     }
 
     function withdrawAllFunds() external onlyOwner {
-        token.transfer(owner, token.balanceOf(address(this)));
-        emit Withdraw(msg.sender, token.balanceOf(address(this)));
+        uint256 balance = token.balanceOf(address(this));
+        token.transfer(owner, balance);
+        emit Withdraw(msg.sender, balance);
     }
 }
