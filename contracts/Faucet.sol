@@ -14,7 +14,13 @@ contract Faucet {
 
     uint256 public lockTime = 5 minutes;
 
+    struct Transaction {
+        uint256 timestamp;
+        uint256 amount;
+    }
+
     mapping(address => uint256) public nextAccessTime;
+    mapping(address => Transaction[]) public userTransactions;
 
     event Deposit(address indexed _account, uint256 indexed _amount);
     event Withdraw(address indexed _account, uint256 indexed _amount);
@@ -64,6 +70,12 @@ contract Faucet {
 
     function setLockTime(uint256 _lockTime) public onlyOwner {
         lockTime = _lockTime * 1 minutes;
+    }
+
+    function getUserTransactions(
+        address _address
+    ) public view returns (Transaction[] memory) {
+        return userTransactions[_address];
     }
 
     function withdrawAllFunds() external onlyOwner {
